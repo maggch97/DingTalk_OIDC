@@ -185,8 +185,11 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := r.Form.Get("code")
-	clientID := r.Form.Get("client_id")
-	clientSecret := r.Form.Get("client_secret")
+	clientID, clientSecret, authErr := parseClientAuth(r)
+	if authErr != nil {
+		http.Error(w, "invalid_client", http.StatusUnauthorized)
+		return
+	}
 	if clientID != s.ClientID || clientSecret != s.ClientSecret {
 		http.Error(w, "invalid_client", http.StatusUnauthorized)
 		return
@@ -307,4 +310,33 @@ func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	_ = enc.Encode(v)
+}
+
+// parseClientAuth extracts client_id and client_secret following RFC 6749 section 2.3.1 (Basic auth)
+// Falls back to form parameters if Authorization header absent.
+func parseClientAuth(r *http.Request) (string, string, error) {
+	auth := r.Header.Get("Authorization")
+	if auth != "" {
+		parts := strings.SplitN(auth, " ", 2)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Basic") {
+			return "", "", fmt.Errorf("invalid_basic_header")
+		}
+		decoded, err := base64.StdEncoding.DecodeString(parts[1])
+		if err != nil {
+			return "", "", fmt.Errorf("bad_basic_base64")
+		}
+		cred := string(decoded)
+		sep := strings.IndexByte(cred, ':')
+		if sep < 0 {
+			return "", "", fmt.Errorf("bad_basic_format")
+		}
+		cid := cred[:sep]
+		secret := cred[sep+1:]
+		if cid == "" {
+			return "", "", fmt.Errorf("empty_client_id")
+		}
+		return cid, secret, nil
+	}
+	// fallback to body
+	return r.Form.Get("client_id"), r.Form.Get("client_secret"), nil
 }
