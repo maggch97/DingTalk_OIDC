@@ -79,7 +79,7 @@ func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 		"subject_types_supported":               []string{"public"},
 		"id_token_signing_alg_values_supported": []string{"RS256"},
 		"scopes_supported":                      []string{"openid", "profile", "email", "phone"},
-		"claims_supported":                      []string{"sub", "iss", "aud", "exp", "iat", "nonce", "name", "email", "phone_number"},
+		"claims_supported":                      []string{"sub", "iss", "aud", "exp", "iat", "nonce", "name", "email", "email_verified", "phone_number", "phone_number_verified"},
 	}
 	writeJSON(w, cfg)
 }
@@ -213,9 +213,11 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		}
 		if user.Email != "" {
 			claims["email"] = user.Email
+			claims["email_verified"] = true
 		}
 		if user.Mobile != "" {
 			claims["phone_number"] = user.Mobile
+			claims["phone_number_verified"] = true
 		}
 	}
 	idToken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(s.Key)
@@ -293,7 +295,7 @@ func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := map[string]any{"sub": claims["sub"]}
-	for _, k := range []string{"name", "email", "phone_number"} {
+	for _, k := range []string{"name", "email", "email_verified", "phone_number", "phone_number_verified"} {
 		if v, ok := claims[k]; ok {
 			resp[k] = v
 		}
