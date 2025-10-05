@@ -6,18 +6,21 @@ ENV CGO_ENABLED=0 GO111MODULE=on
 # Cache deps
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
-# Copy source
 COPY . .
 ARG VERSION=dev
 ARG COMMIT=none
 ARG BUILD_TIME
+# Build main server
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     go build -trimpath -ldflags "-s -w -X github.com/maggch97/dingtalk-oidc/internal/version.Version=$VERSION -X github.com/maggch97/dingtalk-oidc/internal/version.Commit=$COMMIT -X github.com/maggch97/dingtalk-oidc/internal/version.BuildTime=$BUILD_TIME" -o /out/dingtalk-oidc ./cmd/server
+# Build healthcheck binary
+RUN go build -trimpath -o /out/healthcheck ./cmd/healthcheck
 
 # --- Final stage ---
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /app
 COPY --from=build /out/dingtalk-oidc /app/dingtalk-oidc
+COPY --from=build /out/healthcheck /app/healthcheck
 EXPOSE 8086
 USER nonroot:nonroot
 ENV ADDRESS=:8086
