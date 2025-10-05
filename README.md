@@ -100,6 +100,21 @@ Pull example:
 docker pull $DOCKERHUB_USERNAME/dingtalk-oidc:latest
 ```
 
+## Automatic Version Bumping
+An automatic version bump workflow (`auto-version.yml`) analyzes commit messages on pushes to `main` using simple Conventional Commit rules:
+
+| Pattern | Effect |
+|---------|--------|
+| `BREAKING CHANGE:` footer or `type!:` | Major bump |
+| `feat:` | Minor bump (unless major already) |
+| `fix:, perf:, refactor:, chore:, docs:, test:` | Patch bump (if no higher) |
+| No matching commits | Skip (no new tag) |
+
+Script: `scripts/next-version.sh` (outputs next `vX.Y.Z`). First bump starts from `v0.0.0`.
+
+Disable temporarily: mark commits without conventional prefixes; no tag will be created.
+Force manual: create and push your own `vX.Y.Z` tag (workflow will ignore since ref is a tag).
+
 ## Next Steps / Ideas
 - Add cryptographically secure auth code + nonce generation (`crypto/rand`).
 - Persist signing key & rotation strategy.

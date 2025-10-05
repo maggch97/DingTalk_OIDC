@@ -1,0 +1,54 @@
+name: Auto Version Bump
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  bump:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute next version
+        id: ver
+        run: |
+          chmod +x scripts/next-version.sh
+          set +e
+          NEXT=$(./scripts/next-version.sh)
+          CODE=$?
+          set -e
+          if [ $CODE -eq 2 ]; then
+            echo "No version bump needed" && echo "skip=true" >> $GITHUB_OUTPUT && exit 0
+          elif [ $CODE -ne 0 ]; then
+            echo "Version script failed" >&2; exit $CODE
+          fi
+          echo "next=$NEXT" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "Next version: $NEXT"
+
+      - name: Create tag
+        if: steps.ver.outputs.skip == 'false'
+        run: |
+          git tag "${{ steps.ver.outputs.next }}"
+          git push origin "${{ steps.ver.outputs.next }}"
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.ver.outputs.skip }}" = "true" ]; then
+            echo "No semantic changes detected - bump skipped" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Created tag: ${{ steps.ver.outputs.next }}" >> $GITHUB_STEP_SUMMARY
+          fi

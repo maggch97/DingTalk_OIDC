@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/maggch97/dingtalk-oidc/internal/oidc"
+	"github.com/maggch97/dingtalk-oidc/internal/version"
 )
 
 func main() {
@@ -28,7 +29,7 @@ func main() {
 			s.Pending.Cleanup()
 		}
 	}()
-	log.Printf("DingTalk OIDC bridge listening on %s (issuer=%s)", addr, s.Issuer)
+	log.Printf("DingTalk OIDC bridge listening on %s (issuer=%s, version=%s, commit=%s, buildTime=%s)", addr, s.Issuer, version.Version, version.Commit, version.BuildTime)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
