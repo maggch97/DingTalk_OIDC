@@ -12,7 +12,7 @@ import (
 func main() {
 	addr := os.Getenv("ADDRESS")
 	if addr == "" {
-		addr = ":8081"
+		addr = ":8086"
 	}
 	s, err := oidc.NewServer()
 	if err != nil {

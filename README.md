@@ -26,7 +26,7 @@ This service provides a minimal OpenID Connect layer in front of DingTalk. It pe
 | `ISSUER` | Public base URL of this service (e.g. `https://oidc.example.com`). |
 | `DINGTALK_CLIENT_ID` | DingTalk App Key. |
 | `DINGTALK_CLIENT_SECRET` | DingTalk App Secret. |
-| `ADDRESS` | (Optional) Listen address, default `:8080`. |
+| `ADDRESS` | (Optional) Listen address, default `:8086`. |
 
 ## Flow Diagram
 ```
@@ -55,18 +55,50 @@ grant_type=authorization_code&code=RETURNED_CODE&client_id=YOUR_CLIENT_ID&client
 
 ## Running
 ```bash
-export ISSUER="http://localhost:8080"
+export ISSUER="http://localhost:8086"
 export DINGTALK_CLIENT_ID="your_dt_app_key"
 export DINGTALK_CLIENT_SECRET="your_dt_app_secret"
 go run ./cmd/server
 ```
 
 Then visit:
-- Discovery: `http://localhost:8080/.well-known/openid-configuration`
+- Discovery: `http://localhost:8086/.well-known/openid-configuration`
 - UserInfo (example):
 	```bash
-	curl -H "Authorization: Bearer <ID_TOKEN>" http://localhost:8080/userinfo
+	curl -H "Authorization: Bearer <ID_TOKEN>" http://localhost:8086/userinfo
 	```
+
+## Docker Build & Publish
+
+### Local Build
+```bash
+docker build -t dingtalk-oidc:local .
+docker run --rm -p 8086:8086 \
+	-e ISSUER="http://localhost:8086" \
+	-e DINGTALK_CLIENT_ID="your_dt_app_key" \
+	-e DINGTALK_CLIENT_SECRET="your_dt_app_secret" \
+	dingtalk-oidc:local
+```
+
+### GitHub Actions (Docker Hub)
+A workflow at `.github/workflows/docker-publish.yml` builds multi-arch images (amd64, arm64) on pushes to `main` and tags matching `v*.*.*`.
+
+Set repository secrets:
+| Secret | Description |
+|--------|-------------|
+| `DOCKERHUB_USERNAME` | Your Docker Hub username |
+| `DOCKERHUB_TOKEN` | A Docker Hub access token / password |
+
+Image tags produced:
+- `latest` (default branch)
+- Branch name (e.g. `main`)
+- Semantic tag (e.g. `v1.2.3`)
+- Commit SHA short
+
+Pull example:
+```bash
+docker pull $DOCKERHUB_USERNAME/dingtalk-oidc:latest
+```
 
 ## Next Steps / Ideas
 - Add cryptographically secure auth code + nonce generation (`crypto/rand`).
