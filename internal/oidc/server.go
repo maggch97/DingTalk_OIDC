@@ -16,8 +16,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/maggch97/DingTalk_OIDC/internal/dingtalk"
-	"github.com/maggch97/DingTalk_OIDC/internal/store"
+	"github.com/maggch97/dingtalk-oidc/internal/dingtalk"
+	"github.com/maggch97/dingtalk-oidc/internal/store"
 )
 
 // Server implements minimal OIDC provider bridging DingTalk login code -> OIDC code -> ID token.

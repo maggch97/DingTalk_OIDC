@@ -1,4 +1,4 @@
-module github.com/maggch97/DingTalk_OIDC
+module github.com/maggch97/dingtalk-oidc
 
 go 1.22.0
 

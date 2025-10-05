@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/maggch97/DingTalk_OIDC/internal/oidc"
+	"github.com/maggch97/dingtalk-oidc/internal/oidc"
 )
 
 func main() {
