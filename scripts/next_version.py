@@ -23,6 +23,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from typing import Optional, Tuple
 
 
 BREAKING_RE = re.compile(r"BREAKING CHANGE:", re.IGNORECASE)
@@ -35,12 +36,37 @@ def run(*args: str, check: bool = False) -> subprocess.CompletedProcess:
     return subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=check)
 
 
-def latest_tag() -> str | None:
-    cp = run("git", "describe", "--tags", "--abbrev=0")
+SEMVER_TAG_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+
+def parse_semver(tag: str) -> Optional[Tuple[int, int, int]]:
+    m = SEMVER_TAG_RE.match(tag)
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2)), int(m.group(3))
+
+def latest_tag() -> Optional[str]:
+    """Return the highest semantic version tag reachable from HEAD.
+
+    Using `git describe --tags --abbrev=0` can return an arbitrary one when multiple
+    tags share the same commit (depends on internal ordering). We instead list all
+    merged tags and pick the numerically highest vMAJOR.MINOR.PATCH.
+    """
+    cp = run("git", "tag", "--merged", "HEAD")
     if cp.returncode != 0:
         return None
-    tag = cp.stdout.strip()
-    return tag or None
+    best: Optional[Tuple[int, int, int]] = None
+    best_tag: Optional[str] = None
+    for line in cp.stdout.splitlines():
+        tag = line.strip()
+        if not tag:
+            continue
+        ver = parse_semver(tag)
+        if ver is None:
+            continue
+        if best is None or ver > best:
+            best = ver
+            best_tag = tag
+    return best_tag
 
 
 def commit_shas(range_expr: str | None) -> list[str]:
@@ -114,7 +140,6 @@ def main() -> int:
     else:
         base = tag
         range_expr = f"{tag}..HEAD"
-
     shas = commit_shas(range_expr)
     if not shas:
         # No commits at all (unlikely) -> skip
