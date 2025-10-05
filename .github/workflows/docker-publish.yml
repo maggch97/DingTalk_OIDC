@@ -8,6 +8,8 @@ on:
 
 jobs:
   build-and-push:
+    environment:
+      name: docker
     runs-on: ubuntu-latest
     permissions:
       contents: read
