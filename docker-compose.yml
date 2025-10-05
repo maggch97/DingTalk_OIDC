@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  oidc:
+    image: maggch/dingtalk-oidc:latest
+    container_name: dingtalk-oidc
+    restart: unless-stopped
+    environment:
+      # Public base URL (adjust if behind reverse proxy / HTTPS)
+      ISSUER: "http://localhost:8086"
+      # Provide your DingTalk app credentials (required)
+      DINGTALK_CLIENT_ID: "change_me_app_key"
+      DINGTALK_CLIENT_SECRET: "change_me_app_secret"
+      # ADDRESS left default (:8086) inside container
+    ports:
+      - "8086:8086"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8086/.well-known/openid-configuration" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # networks:
+    #   - oidc_net
+
+# Optional dedicated network (uncomment service networks section above if used)
+# networks:
+#   oidc_net:
+#     driver: bridge
