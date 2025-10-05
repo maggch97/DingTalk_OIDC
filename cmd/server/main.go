@@ -25,6 +25,7 @@ func main() {
 		for {
 			time.Sleep(2 * time.Minute)
 			s.AuthCodes.Cleanup()
+			s.Pending.Cleanup()
 		}
 	}()
 	log.Printf("DingTalk OIDC bridge listening on %s (issuer=%s)", addr, s.Issuer)

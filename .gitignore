@@ -1,1 +1,3 @@
 *.bak
+.vscode
+__debug_*
