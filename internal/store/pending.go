@@ -25,7 +25,8 @@ func NewPendingStore() *PendingStore { return &PendingStore{data: make(map[strin
 
 // Create stores and returns an internal state key.
 func (s *PendingStore) Create(p PendingAuth) string {
-	key := randomString(32)
+	// Use 24 bytes -> 32 char approx after base64url (actually 32 bytes -> 43 chars; choose 24 for shorter state ~32 chars)
+	key := secureRandomString(24)
 	s.mu.Lock()
 	s.data[key] = p
 	s.mu.Unlock()

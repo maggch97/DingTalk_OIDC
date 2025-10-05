@@ -1,8 +1,10 @@
 package store
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
-	"math/rand"
+	"io"
 	"sync"
 	"time"
 )
@@ -27,7 +29,7 @@ func NewAuthCodeStore() *AuthCodeStore {
 
 // Create stores a new auth code and returns the code.
 func (s *AuthCodeStore) Create(d AuthCodeData) string {
-	code := randomString(40)
+	code := secureRandomString(32) // 32 bytes -> 43 char URL-safe
 	s.mu.Lock()
 	s.data[code] = d
 	s.mu.Unlock()
@@ -60,12 +62,15 @@ func (s *AuthCodeStore) Cleanup() {
 	s.mu.Unlock()
 }
 
-// randomString creates a URL-safe random string (not cryptographically strong for simplicity).
-func randomString(n int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+// secureRandomString returns a base64url (no padding) encoded string of n bytes of
+// cryptographically secure randomness. n is the number of raw bytes (after decoding
+// length will be ~4/3*n). We trim padding for URL safety per RFC 4648 §5.
+func secureRandomString(n int) string {
+	b := make([]byte, n)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+		// In the unlikely event of failure, fall back to time-based seedless empty code.
+		return ""
 	}
-	return string(b)
+	// Use RawURLEncoding to avoid '+' '/' '=' characters.
+	return base64.RawURLEncoding.EncodeToString(b)
 }

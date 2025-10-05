@@ -38,10 +38,17 @@ jobs:
           echo "skip=false" >> $GITHUB_OUTPUT
           echo "Next version: $NEXT"
 
-      - name: Create tag
+      - name: Create tag (PAT required)
         if: steps.ver.outputs.skip == 'false'
+        env:
+          TAG_PUSH_PAT: ${{ secrets.TAG_PUSH_PAT }}
         run: |
+          if [ -z "$TAG_PUSH_PAT" ]; then
+            echo "ERROR: TAG_PUSH_PAT secret is required (GITHUB_TOKEN fallback disabled)." >&2
+            exit 1
+          fi
           git tag "${{ steps.ver.outputs.next }}"
+          git remote set-url origin "https://x-access-token:${TAG_PUSH_PAT}@github.com/${{ github.repository }}.git"
           git push origin "${{ steps.ver.outputs.next }}"
 
       - name: Summary

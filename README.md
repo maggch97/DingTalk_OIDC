@@ -14,11 +14,8 @@ This service provides a minimal OpenID Connect layer in front of DingTalk. It pe
 
 ## NOT Production Ready
 - No TLS termination (use a reverse proxy or enable TLS yourself).
-- Single client (configured by env).
 - Ephemeral signing key (losing continuity for long‑lived sessions).
-- No refresh tokens / no userinfo endpoint yet.
 - Auth codes & tokens only in memory; not horizontally scalable.
-- Random generators for auth codes are not cryptographically strong.
 
 ## Environment Variables
 | Variable | Description |
@@ -115,7 +112,6 @@ Disable temporarily: mark commits without conventional prefixes; no tag will be 
 Force manual: create and push your own `vX.Y.Z` tag (workflow will ignore since ref is a tag).
 
 ## Next Steps / Ideas
-- Add cryptographically secure auth code + nonce generation (`crypto/rand`).
 - Persist signing key & rotation strategy.
 - (DONE) Add `/userinfo` endpoint.
 - Support Refresh Tokens.
