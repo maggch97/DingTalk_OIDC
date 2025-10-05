@@ -22,12 +22,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Compute next version
+      - name: Compute next version (Python)
         id: ver
         run: |
-          chmod +x scripts/next-version.sh
           set +e
-          NEXT=$(./scripts/next-version.sh)
+          NEXT=$(python scripts/next_version.py)
           CODE=$?
           set -e
           if [ $CODE -eq 2 ]; then

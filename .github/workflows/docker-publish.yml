@@ -2,7 +2,6 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ main ]
     tags: [ 'v*.*.*' ]
   workflow_dispatch:
 
@@ -47,10 +46,12 @@ jobs:
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/dingtalk-oidc
           tags: |
-            type=ref,event=branch
+            # semantic version tag (e.g. v1.2.3) -> keep
             type=ref,event=tag
+            # commit sha for traceability
             type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
+            # always publish / update 'latest' to point at newest release tag
+            type=raw,value=latest
 
       - name: Build and push
         uses: docker/build-push-action@v5

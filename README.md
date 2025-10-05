@@ -81,7 +81,7 @@ docker run --rm -p 8086:8086 \
 ```
 
 ### GitHub Actions (Docker Hub)
-A workflow at `.github/workflows/docker-publish.yml` builds multi-arch images (amd64, arm64) on pushes to `main` and tags matching `v*.*.*`.
+A workflow at `.github/workflows/docker-publish.yml` builds multi-arch images (amd64, arm64) only for semantic version tags (`v*.*.*`).
 
 Set repository secrets:
 | Secret | Description |
@@ -89,10 +89,9 @@ Set repository secrets:
 | `DOCKERHUB_USERNAME` | Your Docker Hub username |
 | `DOCKERHUB_TOKEN` | A Docker Hub access token / password |
 
-Image tags produced:
-- `latest` (default branch)
-- Branch name (e.g. `main`)
+Image tags produced per release tag:
 - Semantic tag (e.g. `v1.2.3`)
+- `latest` (always updated to newest release)
 - Commit SHA short
 
 Pull example:
@@ -110,7 +109,7 @@ An automatic version bump workflow (`auto-version.yml`) analyzes commit messages
 | `fix:, perf:, refactor:, chore:, docs:, test:` | Patch bump (if no higher) |
 | No matching commits | Skip (no new tag) |
 
-Script: `scripts/next-version.sh` (outputs next `vX.Y.Z`). First bump starts from `v0.0.0`.
+Script: `scripts/next_version.py` (outputs next `vX.Y.Z`). First bump starts from `v0.0.0`.
 
 Disable temporarily: mark commits without conventional prefixes; no tag will be created.
 Force manual: create and push your own `vX.Y.Z` tag (workflow will ignore since ref is a tag).
