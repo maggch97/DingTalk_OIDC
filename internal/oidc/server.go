@@ -136,7 +136,7 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 	callback := strings.TrimSuffix(s.Issuer, "/") + "/dingtalk/callback"
 	authURL := "https://login.dingtalk.com/oauth2/auth?client_id=" + url.QueryEscape(s.ClientID) +
 		"&redirect_uri=" + url.QueryEscape(callback) +
-		"&response_type=code&scope=openid&state=" + url.QueryEscape(internal)
+		"&response_type=code&scope=openid&prompt=login consent&state=" + url.QueryEscape(internal)
 	w.Header().Set("Location", authURL)
 	w.WriteHeader(http.StatusFound)
 }
