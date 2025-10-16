@@ -79,7 +79,7 @@ func (s *Server) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 		"subject_types_supported":               []string{"public"},
 		"id_token_signing_alg_values_supported": []string{"RS256"},
 		"scopes_supported":                      []string{"openid", "profile", "email", "phone"},
-		"claims_supported":                      []string{"sub", "iss", "aud", "exp", "iat", "nonce", "name", "email", "email_verified", "phone_number", "phone_number_verified"},
+		"claims_supported":                      []string{"sub", "iss", "aud", "exp", "iat", "nonce", "name", "picture", "email", "email_verified", "phone_number", "phone_number_verified"},
 	}
 	writeJSON(w, cfg)
 }
@@ -214,6 +214,9 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		if user.Nick != "" {
 			claims["name"] = user.Nick
 		}
+		if user.AvatarURL != "" {
+			claims["picture"] = user.AvatarURL
+		}
 		if user.Email != "" {
 			claims["email"] = user.Email
 			claims["email_verified"] = true
@@ -298,7 +301,7 @@ func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := map[string]any{"sub": claims["sub"]}
-	for _, k := range []string{"name", "email", "email_verified", "phone_number", "phone_number_verified"} {
+	for _, k := range []string{"name", "picture", "email", "email_verified", "phone_number", "phone_number_verified"} {
 		if v, ok := claims[k]; ok {
 			resp[k] = v
 		}

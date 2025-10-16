@@ -41,6 +41,7 @@ type User struct {
 	OpenID  string `json:"openId"`
 	Email   string `json:"email,omitempty"`
 	Mobile  string `json:"mobile,omitempty"`
+	AvatarURL string `json:"avatarUrl,omitempty"`
 }
 
 // Session manages a single DingTalk login exchange.
