@@ -11,6 +11,10 @@ services:
       # Provide your DingTalk app credentials (required)
       DINGTALK_CLIENT_ID: "change_me_app_key"
       DINGTALK_CLIENT_SECRET: "change_me_app_secret"
+      # Optional: Comma-separated list of allowed redirect URLs for security
+      # If not set, all redirect URLs will be accepted (less secure)
+      # Example: "http://localhost:3000/callback,https://myapp.example.com/auth/callback"
+      ALLOWED_REDIRECT_URLS: "http://localhost:3000/callback,http://localhost:8080/callback"
       # ADDRESS left default (:8086) inside container
     ports:
       - "8086:8086"

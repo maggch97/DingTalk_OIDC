@@ -22,14 +22,15 @@ import (
 
 // Server implements minimal OIDC provider bridging DingTalk login code -> OIDC code -> ID token.
 type Server struct {
-	Issuer       string
-	ClientID     string
-	ClientSecret string
-	AuthCodes    *store.AuthCodeStore
-	Pending      *store.PendingStore
-	Key          *rsa.PrivateKey
-	KeyID        string
-	Provider     *dingtalk.Provider
+	Issuer              string
+	ClientID            string
+	ClientSecret        string
+	AllowedRedirectURLs []string
+	AuthCodes           *store.AuthCodeStore
+	Pending             *store.PendingStore
+	Key                 *rsa.PrivateKey
+	KeyID               string
+	Provider            *dingtalk.Provider
 }
 
 func NewServer() (*Server, error) {
@@ -39,16 +40,29 @@ func NewServer() (*Server, error) {
 	if issuer == "" || clientID == "" || clientSecret == "" {
 		return nil, ErrConfigMissing
 	}
+
+	// Parse allowed redirect URLs from comma-separated env var
+	var allowedRedirectURLs []string
+	if allowedURLsEnv := os.Getenv("ALLOWED_REDIRECT_URLS"); allowedURLsEnv != "" {
+		for _, u := range strings.Split(allowedURLsEnv, ",") {
+			trimmed := strings.TrimSpace(u)
+			if trimmed != "" {
+				allowedRedirectURLs = append(allowedRedirectURLs, trimmed)
+			}
+		}
+	}
+
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return &Server{
-		Issuer:       issuer,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		AuthCodes:    store.NewAuthCodeStore(),
-		Pending:      store.NewPendingStore(),
-		Key:          key,
-		KeyID:        "d1",
-		Provider:     &dingtalk.Provider{ClientID: clientID, ClientSecret: clientSecret},
+		Issuer:              issuer,
+		ClientID:            clientID,
+		ClientSecret:        clientSecret,
+		AllowedRedirectURLs: allowedRedirectURLs,
+		AuthCodes:           store.NewAuthCodeStore(),
+		Pending:             store.NewPendingStore(),
+		Key:                 key,
+		KeyID:               "d1",
+		Provider:            &dingtalk.Provider{ClientID: clientID, ClientSecret: clientSecret},
 	}, nil
 }
 
@@ -115,6 +129,22 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid_redirect_uri", http.StatusBadRequest)
 		return
 	}
+
+	// Validate redirect_uri against allowed list if configured
+	if len(s.AllowedRedirectURLs) > 0 {
+		allowed := false
+		for _, allowedURL := range s.AllowedRedirectURLs {
+			if redirectURI == allowedURL {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			http.Error(w, "redirect_uri_not_allowed", http.StatusBadRequest)
+			return
+		}
+	}
+
 	if q.Get("response_type") != "code" {
 		http.Error(w, "unsupported_response_type", http.StatusBadRequest)
 		return

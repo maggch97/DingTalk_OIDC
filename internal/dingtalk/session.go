@@ -36,11 +36,11 @@ func (p *Provider) client() *http.Client {
 
 // User represents the merged DingTalk user information we expose to OIDC.
 type User struct {
-	UnionID string `json:"unionId"`
-	Nick    string `json:"nick"`
-	OpenID  string `json:"openId"`
-	Email   string `json:"email,omitempty"`
-	Mobile  string `json:"mobile,omitempty"`
+	UnionID   string `json:"unionId"`
+	Nick      string `json:"nick"`
+	OpenID    string `json:"openId"`
+	Email     string `json:"email,omitempty"`
+	Mobile    string `json:"mobile,omitempty"`
 	AvatarURL string `json:"avatarUrl,omitempty"`
 }
 
