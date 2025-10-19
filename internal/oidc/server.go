@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dop251/goja"
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/maggch97/dingtalk-oidc/internal/dingtalk"
@@ -22,15 +23,16 @@ import (
 
 // Server implements minimal OIDC provider bridging DingTalk login code -> OIDC code -> ID token.
 type Server struct {
-	Issuer              string
-	ClientID            string
-	ClientSecret        string
-	AllowedRedirectURLs []string
-	AuthCodes           *store.AuthCodeStore
-	Pending             *store.PendingStore
-	Key                 *rsa.PrivateKey
-	KeyID               string
-	Provider            *dingtalk.Provider
+	Issuer                string
+	ClientID              string
+	ClientSecret          string
+	AllowedRedirectURLs   []string
+	ClaimsTransformScript string
+	AuthCodes             *store.AuthCodeStore
+	Pending               *store.PendingStore
+	Key                   *rsa.PrivateKey
+	KeyID                 string
+	Provider              *dingtalk.Provider
 }
 
 func NewServer() (*Server, error) {
@@ -52,17 +54,29 @@ func NewServer() (*Server, error) {
 		}
 	}
 
+	// Read claims transform script from file path specified in env var
+	var claimsTransformScript string
+	if scriptPath := os.Getenv("CLAIMS_TRANSFORM_SCRIPT"); scriptPath != "" {
+		scriptContent, err := os.ReadFile(scriptPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read claims transform script from %s: %w", scriptPath, err)
+		}
+		claimsTransformScript = string(scriptContent)
+		log.Printf("Loaded claims transform script from: %s", scriptPath)
+	}
+
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return &Server{
-		Issuer:              issuer,
-		ClientID:            clientID,
-		ClientSecret:        clientSecret,
-		AllowedRedirectURLs: allowedRedirectURLs,
-		AuthCodes:           store.NewAuthCodeStore(),
-		Pending:             store.NewPendingStore(),
-		Key:                 key,
-		KeyID:               "d1",
-		Provider:            &dingtalk.Provider{ClientID: clientID, ClientSecret: clientSecret},
+		Issuer:                issuer,
+		ClientID:              clientID,
+		ClientSecret:          clientSecret,
+		AllowedRedirectURLs:   allowedRedirectURLs,
+		ClaimsTransformScript: claimsTransformScript,
+		AuthCodes:             store.NewAuthCodeStore(),
+		Pending:               store.NewPendingStore(),
+		Key:                   key,
+		KeyID:                 "d1",
+		Provider:              &dingtalk.Provider{ClientID: clientID, ClientSecret: clientSecret},
 	}, nil
 }
 
@@ -256,7 +270,16 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 			claims["phone_number_verified"] = true
 		}
 	}
-	idToken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(s.Key)
+
+	// Apply JavaScript transformation to claims if configured
+	transformedClaims, err := s.transformClaims(claims)
+	if err != nil {
+		log.Printf("claims transform error: %v", err)
+		http.Error(w, "claims_transform_error", http.StatusInternalServerError)
+		return
+	}
+
+	idToken, err := jwt.NewWithClaims(jwt.SigningMethodRS256, transformedClaims).SignedString(s.Key)
 	if err != nil {
 		http.Error(w, "server_error", http.StatusInternalServerError)
 		return
@@ -343,6 +366,50 @@ func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	_ = enc.Encode(v)
+}
+
+// transformClaims applies JavaScript transformation to claims if script is configured.
+// The JS script should define a function `transform(claims)` that returns modified claims.
+func (s *Server) transformClaims(claims jwt.MapClaims) (jwt.MapClaims, error) {
+	if s.ClaimsTransformScript == "" {
+		return claims, nil
+	}
+
+	vm := goja.New()
+
+	// Convert claims to a format goja can handle
+	claimsObj := vm.NewObject()
+	for k, v := range claims {
+		if err := claimsObj.Set(k, v); err != nil {
+			return nil, fmt.Errorf("failed to set claim %s: %w", k, err)
+		}
+	}
+
+	// Set the claims object in the VM
+	if err := vm.Set("claims", claimsObj); err != nil {
+		return nil, fmt.Errorf("failed to set claims in VM: %w", err)
+	}
+
+	// Execute the script
+	script := s.ClaimsTransformScript + "\ntransform(claims);"
+	result, err := vm.RunString(script)
+	if err != nil {
+		return nil, fmt.Errorf("script execution failed: %w", err)
+	}
+
+	// Convert result back to jwt.MapClaims
+	resultObj := result.Export()
+	resultMap, ok := resultObj.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("transform function must return an object, got %T", resultObj)
+	}
+
+	newClaims := jwt.MapClaims{}
+	for k, v := range resultMap {
+		newClaims[k] = v
+	}
+
+	return newClaims, nil
 }
 
 // parseClientAuth extracts client_id and client_secret following RFC 6749 section 2.3.1 (Basic auth)

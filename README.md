@@ -24,6 +24,85 @@ This service provides a minimal OpenID Connect layer in front of DingTalk. It pe
 | `DINGTALK_CLIENT_ID` | DingTalk App Key. |
 | `DINGTALK_CLIENT_SECRET` | DingTalk App Secret. |
 | `ADDRESS` | (Optional) Listen address, default `:8086`. |
+| `ALLOWED_REDIRECT_URLS` | (Optional) Comma-separated list of allowed redirect URLs for security. If not set, all valid URLs are accepted. Example: `http://localhost:3000/callback,https://app.example.com/auth/callback` |
+| `CLAIMS_TRANSFORM_SCRIPT` | (Optional) Path to JavaScript file to transform claims before signing the ID token. Must define a `transform(claims)` function that returns modified claims. See [Claims Transformation](#claims-transformation) section. |
+
+## Claims Transformation
+
+You can customize the ID token claims using JavaScript before they are signed. This is useful for:
+- Adding custom groups/roles based on user attributes
+- Mapping DingTalk user info to your application's schema
+- Adding organization-specific metadata
+- Conditional claim injection
+
+### Usage
+
+1. Create a JavaScript file (e.g., `transform.js`) with a `transform(claims)` function
+2. Set the `CLAIMS_TRANSFORM_SCRIPT` environment variable to the file path
+3. Mount the file as a volume when using Docker
+
+**Example transform.js:**
+```javascript
+function transform(claims) {
+    // Add custom fields
+    if (claims.email && claims.email.endsWith('@example.com')) {
+        claims.groups = ['admin', 'users'];
+        claims.role = 'admin';
+    } else {
+        claims.groups = ['users'];
+        claims.role = 'user';
+    }
+    
+    claims.organization = 'MyCompany';
+    
+    // IMPORTANT: Always return the claims object
+    return claims;
+}
+```
+
+**Local usage:**
+```bash
+export CLAIMS_TRANSFORM_SCRIPT="./transform.js"
+go run ./cmd/server
+```
+
+**Docker usage:**
+```yaml
+services:
+  oidc:
+    image: maggch/dingtalk-oidc:latest
+    environment:
+      CLAIMS_TRANSFORM_SCRIPT: "/app/config/transform.js"
+    volumes:
+      - ./transform.js:/app/config/transform.js:ro
+```
+
+### Example
+
+See `example-transform.js` for a comprehensive example showing various transformation patterns.
+
+### Available Claims
+
+The `claims` object passed to your transform function includes:
+- `iss` - Issuer URL
+- `sub` - Subject (DingTalk UnionID)
+- `aud` - Audience (client ID)
+- `iat` - Issued at timestamp
+- `exp` - Expiration timestamp
+- `nonce` - Nonce (if provided in auth request)
+- `name` - User's display name (if available)
+- `picture` - Avatar URL (if available)
+- `email` - Email address (if available)
+- `email_verified` - Email verification status
+- `phone_number` - Mobile number (if available)
+- `phone_number_verified` - Phone verification status
+
+### Notes
+
+- If `CLAIMS_TRANSFORM_SCRIPT` is not set, claims are used as-is
+- Script errors will cause token generation to fail with HTTP 500
+- The transform function runs in a sandboxed JavaScript VM using [goja](https://github.com/dop251/goja)
+- Keep scripts simple and fast to avoid performance issues
 
 ## Flow Diagram
 ```
