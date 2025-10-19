@@ -1,14 +1,26 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
 )
 
 func main() {
+	addr := os.Getenv("ADDRESS")
+	if addr == "" {
+		addr = ":8086"
+	}
+	// Remove leading colon if present for URL construction
+	port := addr
+	if port[0] == ':' {
+		port = port[1:]
+	}
+	
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get("http://localhost:8086/.well-known/openid-configuration")
+	url := fmt.Sprintf("http://localhost:%s/.well-known/openid-configuration", port)
+	resp, err := client.Get(url)
 	if err != nil {
 		os.Exit(1)
 	}
